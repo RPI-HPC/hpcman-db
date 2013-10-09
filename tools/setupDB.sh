@@ -48,51 +48,80 @@ psql -c 'DROP GROUP hpcagent' || true
 psql -c 'CREATE GROUP hpcagent' 
 psql -c 'DROP GROUP vspasswdadmin' || true
 psql -c 'CREATE GROUP vspasswdadmin' 
-createdb "$PGDATABASE" \
-    	&& createlang plpgsql -d "$PGDATABASE" \
-        && psql -f time_latest.sql \
-	&& psql -f images.sql \
-	&& psql -f principalStates.sql \
-	&& psql -f principals.sql \
-        && psql -f Authenticators.sql \
-        && psql -f Personae.sql \
-        && psql -f PasswordTypes.sql \
-        && psql -f Passwords.sql \
-	&& psql -f sites.sql \
-	&& psql -f cluster_sharing.sql \
-	&& psql -f clusters.sql \
-        && psql -f SiteAdmins.sql \
-        && psql -f FilesystemTypes.sql \
-        && psql -f Filesystems.sql \
-	&& psql -f sponsors.sql \
-	&& psql -f GroupStates.sql \
-	&& psql -f Groups.sql \
-	&& psql -f projectTags.sql \
-	&& psql -f projectTagging.sql \
-        && psql -f Projects.sql \
-	&& psql -f ProjectClusterAccess.sql \
-        && psql -f ProjectOwners.sql \
-	&& psql -f ProjectParents.sql \
-	&& psql -f UserAccountsStates.sql \
-	&& psql -f UserAccounts.sql \
-	&& psql -f UserAccountActivity.sql \
-        && psql -f FilesystemProjectQuotas.sql \
-        && psql -f FilesystemUserQuotas.sql \
-        && psql -f FilesystemGroupQuotas.sql \
-	&& psql -f GroupMembers.sql \
-	&& psql -f VirtualSites.sql \
-	&& psql -f VirtualSitesAllowed.sql \
-	&& psql -f VirtualSiteMembers.sql \
-	&& psql -f VirtualSiteGroupMembers.sql \
-	&& psql -f VSUserAccount.sql \
-        && psql -f VSGroupMembers.sql \
-	&& psql -f VSGroups.sql \
-	&& psql -f VSUserInformation.sql \
-	&& psql -f VSChangePassword.sql \
-	&& psql -f VOAssoc.sql \
-	&& psql -f rcsmap.sql \
-	&& psql -f CPUTime.sql \
-	&& psql -f firewall.sql \
- 	&& : psql -f ProjectRules.sql \
-        && [ "$popFlag" -eq 1 ] \
-	&& psql -d "$PGDATABASE" -f popTestDB.sql
+
+
+createdb "$PGDATABASE"
+if [ $? -ne 0 ]; then
+	echo "Error: failed to create database!"
+	exit 1
+fi
+
+createlang plpgsql -d "$PGDATABASE"
+ret=$?
+if [ $ret -ne 0 ] && [ $ret -ne 2 ]; then
+	echo "Error: failed to install plpgsql! ($ret)"
+	exit 1
+fi
+
+SCHEMA_DIR="../schema"
+
+# order is important!
+SCHEMA_FILES="
+time_latest.sql
+images.sql
+principalStates.sql
+principals.sql
+Authenticators.sql
+Personae.sql
+PasswordTypes.sql
+Passwords.sql
+sites.sql
+cluster_sharing.sql
+clusters.sql
+SiteAdmins.sql
+FilesystemTypes.sql
+Filesystems.sql
+sponsors.sql
+GroupStates.sql
+Groups.sql
+projectTags.sql
+projectTagging.sql
+Projects.sql
+ProjectClusterAccess.sql
+ProjectOwners.sql
+ProjectParents.sql
+UserAccountsStates.sql
+UserAccounts.sql
+UserAccountActivity.sql
+FilesystemProjectQuotas.sql
+FilesystemUserQuotas.sql
+FilesystemGroupQuotas.sql
+GroupMembers.sql
+VirtualSites.sql
+VirtualSitesAllowed.sql
+VirtualSiteMembers.sql
+VirtualSiteGroupMembers.sql
+VSUserAccount.sql
+VSGroupMembers.sql
+VSGroups.sql
+VSUserInformation.sql
+VSChangePassword.sql
+VOAssoc.sql
+rcsmap.sql
+CPUTime.sql
+firewall.sql"
+
+export ON_ERROR_STOP=1
+
+for f in $SCHEMA_FILES; do
+	echo "Installing $f"
+	psql -v ON_ERROR_STOP=1 -1 -f "$SCHEMA_DIR/$f"
+	if [ $? -ne 0 ]; then
+		echo "Install failed; aborting."
+		exit 1
+	fi
+done
+
+if [ "$popFlag" -eq 1 ]; then
+	psql -f popTestDB.sql
+fi
