@@ -40,4 +40,6 @@ BEGIN
     RETURN 2;
 END;
 $body$ LANGUAGE plpgsql;
-GRANT EXECUTE on vs_change_password TO vspasswdadmin;
+GRANT EXECUTE ON FUNCTION
+    vs_change_password(BIGINT, BIGINT, BIGINT, BIGINT, TEXT, TEXT)
+    TO vspasswdadmin;
