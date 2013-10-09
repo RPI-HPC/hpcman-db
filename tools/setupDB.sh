@@ -44,12 +44,6 @@ while [ $# -ge 1 ]; do
 done
 
 dropdb "$PGDATABASE" || true
-psql -c 'DROP GROUP hpcagent' || true
-psql -c 'CREATE GROUP hpcagent' 
-psql -c 'DROP GROUP vspasswdadmin' || true
-psql -c 'CREATE GROUP vspasswdadmin' 
-
-
 createdb "$PGDATABASE"
 if [ $? -ne 0 ]; then
 	echo "Error: failed to create database!"
@@ -62,6 +56,11 @@ if [ $ret -ne 0 ] && [ $ret -ne 2 ]; then
 	echo "Error: failed to install plpgsql! ($ret)"
 	exit 1
 fi
+
+psql -c 'DROP GROUP hpcagent' || true
+psql -c 'CREATE GROUP hpcagent'
+psql -c 'DROP GROUP vspasswdadmin' || true
+psql -c 'CREATE GROUP vspasswdadmin'
 
 SCHEMA_DIR="../schema"
 
